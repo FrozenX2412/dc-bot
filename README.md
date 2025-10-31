@@ -1,4 +1,4 @@
-# 🤖 Discord Moderation Bot
+# 🤖 Discord Bot - Advanced Moderation & Info System
 
 <div align="center">
 
@@ -7,38 +7,145 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 
-A powerful and feature-rich Discord moderation bot with **hybrid command support** (both slash commands and prefix commands) built with discord.py.
+A powerful, feature-rich Discord bot with **hybrid command support** (slash + prefix), **creative embeds**, and **multi-guild support**. Organized with modular cog architecture for easy maintenance.
 
 </div>
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-### 🛡️ Moderation Commands
-- **Ban** - Ban members from the server with reason tracking
-- **Unban** - Unban previously banned users
-- **Kick** - Kick members from the server
-- **Mute** - Timeout members for a specified duration
-- **Unmute** - Remove timeout from members
-
-### 📊 Information Commands
-- **Server Info** - Detailed server statistics and information
-- **User Info** - Display comprehensive user information
-- **Avatar** - View and download user avatars in multiple formats
-
-### 🔧 Utility Commands
-- **Ping** - Check bot latency and response time
-- **Help** - Comprehensive help system (coming soon)
-
-### 🎯 Key Features
-- ✅ **Hybrid Commands** - Works with both `/` slash commands and `!` prefix commands
-- ✅ **Role Hierarchy Checks** - Prevents unauthorized actions based on role positions
-- ✅ **Beautiful Embeds** - All responses use attractive Discord embeds
-- ✅ **Error Handling** - Comprehensive error handling with user-friendly messages
-- ✅ **Permission Checks** - Automatic permission verification for all commands
+- ✅ **Hybrid Commands** - Both `/slash` and `!prefix` command support
+- ✅ **Creative Embed Design** - Master-designed beautiful embeds with unique styling for every command
+- ✅ **Multi-Guild Support** - Seamlessly works across unlimited servers
+- ✅ **Modular Architecture** - Organized folder structure with categorized cogs
+- ✅ **Role Hierarchy Protection** - Smart permission checks prevent unauthorized actions
+- ✅ **Comprehensive Error Handling** - User-friendly error messages
 - ✅ **DM Notifications** - Members receive DM notifications for moderation actions
-- ✅ **Multi-Guild Support** - Works seamlessly across multiple servers
+- ✅ **Persistent Data** - Warning tracking, blacklist system with JSON storage
+
+---
+
+## 📁 Project Structure
+
+```
+dc-bot/
+├── cogs/
+│   ├── moderation/          # 🛡️ All moderation commands
+│   │   ├── ban.py
+│   │   ├── unban.py
+│   │   ├── kick.py
+│   │   ├── mute.py
+│   │   ├── unmute.py
+│   │   ├── warn.py
+│   │   ├── clear.py
+│   │   ├── channel_management.py  # slowmode, lock, unlock
+│   │   ├── role_management.py     # roleadd, roleremove, roleinfo
+│   │   └── advanced_moderation.py # softban, prune, infractions, modlog, report, blacklist, whitelist
+│   │
+│   └── info/                # ℹ️ All information commands
+│       ├── basic_info.py    # help, ping, uptime, stats
+│       ├── user_info.py     # userinfo, whois, id, joined
+│       └── server_info.py   # membercount, roles, channelinfo, emoji, emotes, servericon, boostcount, servercreated, invite
+│
+├── bot.py                   # Main bot file with cog loading
+├── requirements.txt         # Dependencies
+├── .env.example            # Environment variables template
+└── README.md               # This file
+```
+
+---
+
+## 🛡️ Moderation Commands
+
+### Member Management
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/ban` | Ban a member from the server | `/ban @user [reason]` |
+| `/unban` | Unban a user by ID | `/unban <user_id> [reason]` |
+| `/kick` | Kick a member from the server | `/kick @user [reason]` |
+| `/mute` | Timeout a member | `/mute @user [duration] [reason]` |
+| `/unmute` | Remove timeout from a member | `/unmute @user [reason]` |
+| `/warn` | Issue a warning to a user | `/warn @user [reason]` |
+| `/softban` | Ban and instantly unban (deletes messages) | `/softban @user [reason]` |
+
+### Message & Channel Management
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/clear` | Delete messages from channel | `/clear <amount>` |
+| `/purge` | Alias for clear command | `/purge <amount>` |
+| `/slowmode` | Set channel slowmode delay | `/slowmode <seconds>` |
+| `/lock` | Lock a channel | `/lock [channel]` |
+| `/unlock` | Unlock a channel | `/unlock [channel]` |
+
+### Role Management
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/roleadd` | Add a role to a user | `/roleadd @user @role` |
+| `/roleremove` | Remove a role from a user | `/roleremove @user @role` |
+| `/roleinfo` | Display role information | `/roleinfo @role` |
+
+### Advanced Moderation
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/prune` | Preview inactive member removal | `/prune [days]` |
+| `/infractions` | Show user's warning history | `/infractions @user` |
+| `/modlog` | Display moderation actions log | `/modlog` |
+| `/report` | Report a user to moderators | `/report @user <reason>` |
+| `/blacklist` | Block user from bot usage (owner) | `/blacklist <user_id>` |
+| `/whitelist` | Unblock user from bot usage (owner) | `/whitelist <user_id>` |
+
+---
+
+## ℹ️ Information Commands
+
+### Bot Information
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/help` | Shows all available commands | `/help` |
+| `/ping` | Check bot latency | `/ping` |
+| `/uptime` | Show how long bot has been online | `/uptime` |
+| `/stats` | Display bot statistics | `/stats` |
+| `/invite` | Generate bot invite link | `/invite` |
+
+### User Information
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/userinfo` | Display user information | `/userinfo [@user]` |
+| `/whois` | Detailed user info (alias) | `/whois [@user]` |
+| `/id` | Get user or server ID | `/id [@user]` |
+| `/joined` | Show when user joined server | `/joined [@user]` |
+
+### Server Information
+| Command | Description | Usage |
+|---------|-------------|-------|
+| `/membercount` | Show server member count | `/membercount` |
+| `/roles` | List all server roles | `/roles` |
+| `/channelinfo` | Display channel information | `/channelinfo [channel]` |
+| `/emoji` | Show server emojis | `/emoji` |
+| `/emotes` | List custom emotes (alias) | `/emotes` |
+| `/servericon` | Display server icon | `/servericon` |
+| `/boostcount` | Show boost statistics | `/boostcount` |
+| `/servercreated` | Show server creation date | `/servercreated` |
+
+---
+
+## 🎨 Creative Embed Features
+
+Every command features **master-designed embeds** with:
+
+- **Color-Coded Responses** - Different colors for success (green), warnings (yellow/orange), errors (red), and info (purple/blue)
+- **Rich Field Layouts** - Organized information with emoji-enhanced field names
+- **Timestamps** - All embeds include creation timestamps
+- **Thumbnails & Images** - User avatars, server icons contextually displayed
+- **Interactive Elements** - Clickable links, formatted code blocks, timestamp displays
+- **Status Indicators** - Visual feedback with emojis (✅ ❌ ⚠️ 🟢 🔴)
+
+**Example Embed Styles:**
+- 🛡️ **Moderation Actions** - Red/orange tones with moderator info and reason fields
+- ℹ️ **Information Displays** - Blue/purple tones with organized data fields
+- ✅ **Success Messages** - Green tones with confirmation details
+- 📊 **Statistics** - Purple gradient with visual data presentation
 
 ---
 
@@ -77,71 +184,28 @@ python bot.py
 
 ---
 
-## 📁 Project Structure
-
-```
-dc-bot/
-├── cogs/
-│   ├── ban.py          # Ban command
-│   ├── unban.py        # Unban command
-│   ├── kick.py         # Kick command
-│   ├── mute.py         # Mute/timeout command
-│   ├── unmute.py       # Unmute command
-│   ├── serverinfo.py   # Server information
-│   ├── avatar.py       # Avatar display
-│   └── utility.py      # Utility commands & helpers
-├── bot.py              # Main bot file
-├── requirements.txt    # Python dependencies
-├── .env.example        # Example environment file
-└── README.md           # This file
-```
-
----
-
-## 🎮 Commands
-
-### Moderation Commands
-
-| Command | Description | Usage | Permissions Required |
-|---------|-------------|-------|---------------------|
-| `/ban` | Ban a member from the server | `/ban @user [reason]` | Ban Members |
-| `/unban` | Unban a user by ID | `/unban <user_id> [reason]` | Ban Members |
-| `/kick` | Kick a member from the server | `/kick @user [reason]` | Kick Members |
-| `/mute` | Timeout a member | `/mute @user [duration] [reason]` | Moderate Members |
-| `/unmute` | Remove timeout from a member | `/unmute @user [reason]` | Moderate Members |
-
-### Information Commands
-
-| Command | Description | Usage | Permissions Required |
-|---------|-------------|-------|---------------------|
-| `/serverinfo` | Display server information | `/serverinfo` | None |
-| `/userinfo` | Display user information | `/userinfo [@user]` | None |
-| `/avatar` | Display user's avatar | `/avatar [@user]` | None |
-| `/ping` | Check bot latency | `/ping` | None |
-
-> **Note:** All commands support both slash commands (`/command`) and prefix commands (`!command`)
-
----
-
 ## 🔧 Configuration
 
 ### Bot Intents
-The bot requires the following intents to function properly:
+The bot requires the following intents:
 - `guilds` - Access to guild information
 - `members` - Access to member information
 - `message_content` - Required for prefix commands
 
-### Permissions
-Recommended bot permissions:
-- Ban Members
-- Kick Members
-- Moderate Members (Timeout)
-- Manage Roles
-- Read Messages/View Channels
-- Send Messages
-- Embed Links
-- Attach Files
-- Read Message History
+### Recommended Permissions
+```
+Ban Members
+Kick Members
+Moderate Members (Timeout)
+Manage Roles
+Manage Channels
+Manage Messages
+Read Messages/View Channels
+Send Messages
+Embed Links
+Attach Files
+Read Message History
+```
 
 **Permission Integer:** `1099511627830`
 
@@ -154,20 +218,24 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_BOT_ID&permissions=10995
 
 ## 💡 Usage Examples
 
-### Using Slash Commands
+### Slash Commands
 ```
-/ban @JohnDoe Spamming in general chat
-/mute @JaneDoe 10m Inappropriate language
-/serverinfo
-/avatar @User
+/ban @JohnDoe Spamming in chat
+/mute @User 30m Inappropriate language
+/warn @Member Breaking rules
+/roleadd @User @Verified
+/userinfo @Someone
+/servericon
 ```
 
-### Using Prefix Commands
+### Prefix Commands
 ```
-!ban @JohnDoe Spamming in general chat
-!mute @JaneDoe 10m Inappropriate language
-!serverinfo
-!avatar @User
+!ban @JohnDoe Spamming in chat
+!mute @User 30m Inappropriate language
+!warn @Member Breaking rules
+!roleadd @User @Verified
+!userinfo @Someone
+!servericon
 ```
 
 ### Mute Duration Formats
@@ -180,7 +248,7 @@ https://discord.com/api/oauth2/authorize?client_id=YOUR_BOT_ID&permissions=10995
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can help:
+Contributions are welcome! Here's how:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -204,16 +272,22 @@ If you encounter any bugs or have feature suggestions, please [open an issue](ht
 
 ## 📞 Support
 
-Need help? Here are some resources:
+Need help? Resources:
 - [Discord.py Documentation](https://discordpy.readthedocs.io/)
 - [Discord Developer Portal](https://discord.com/developers/docs/)
 - [Project Issues](https://github.com/FrozenX2412/dc-bot/issues)
 
 ---
 
-## ⚠️ Disclaimer
+## ⭐ Features Roadmap
 
-This bot is provided as-is without any warranties. Use at your own risk. Always ensure you comply with Discord's Terms of Service and Community Guidelines when using this bot.
+- [ ] Advanced logging system
+- [ ] Custom prefix per guild
+- [ ] Automated moderation (auto-mod)
+- [ ] Music commands
+- [ ] Leveling system
+- [ ] Custom embed builder
+- [ ] Dashboard web interface
 
 ---
 
