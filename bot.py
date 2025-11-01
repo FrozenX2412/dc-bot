@@ -41,9 +41,14 @@ class DiscordBot(commands.Bot):
             'cogs.moderation.kick',
             'cogs.moderation.mute',
             'cogs.moderation.unmute',
+            'cogs.moderation.clear',
+            'cogs.moderation.warn',
             'cogs.moderation.serverinfo',
             'cogs.moderation.avatar',
-            'cogs.moderation.utility'
+            'cogs.moderation.utility',
+            'cogs.moderation.role_management',
+            'cogs.moderation.channel_management',
+            'cogs.moderation.advanced_moderation'
         ]
         
         # Load each cog
