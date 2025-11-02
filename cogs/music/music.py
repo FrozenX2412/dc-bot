@@ -1,18 +1,14 @@
-# noqa: D100
 from __future__ import annotations
-
 import asyncio
 from typing import Optional, List
-
 import discord
 from discord import app_commands
 from discord.ext import commands
 import wavelink
 
-GUILD_LOGO = 0x2b7fff  # Accent color used across embeds
-
+GUILD_LOGO = 0x2b7fff
 LAVALINK_URI = "lava-v4.ajieblogs.eu.org:443"
-LAVALINK_PASSWORD = "https://dsc.gg/ajidevserver"
+LAVALINK_PASSWORD = "your-lavalink-password"  # replace with actual password
 LAVALINK_SSL = True
 
 
@@ -31,7 +27,7 @@ def make_embed(
 
 
 class Player(wavelink.Player):
-    queue: asyncio.Queue[wavelink.YouTubeTrack]  # simple per-guild queue
+    queue: asyncio.Queue[wavelink.Playable]
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -53,7 +49,7 @@ class MusicView(discord.ui.View):
 
     async def _ensure(self, interaction: discord.Interaction) -> Optional[Player]:
         if not interaction.guild:
-            await interaction.response.send_message(embed=make_embed(description="This action must be used in a guild."), ephemeral=True)
+            await interaction.response.send_message(embed=make_embed(description="This must be used in a guild."), ephemeral=True)
             return None
         player = self.cog.get_player(interaction.guild)
         if player is None:
@@ -94,18 +90,12 @@ class MusicView(discord.ui.View):
 
 
 class Music(commands.Cog):
-    """Music commands powered by Lavalink via Wavelink.
-
-    Supports prefix and slash commands, embeds, and button controls.
-    """
+    """Music commands powered by Lavalink via Wavelink."""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._node_ready = asyncio.Event()
-
-        # Ensure wavelink uses our Player subclass
         wavelink.Player = Player  # type: ignore
-
         bot.loop.create_task(self._connect_nodes())
 
     def get_player(self, guild: discord.Guild) -> Optional[Player]:
@@ -119,8 +109,8 @@ class Music(commands.Cog):
         await self.bot.wait_until_ready()
         try:
             if not wavelink.NodePool.nodes:
-                await wavelink.NodePool.create_node(
-                    bot=self.bot,
+                await wavelink.NodePool.connect(
+                    client=self.bot,
                     host=LAVALINK_URI.split(":")[0],
                     port=int(LAVALINK_URI.split(":")[1]),
                     password=LAVALINK_PASSWORD,
@@ -131,45 +121,40 @@ class Music(commands.Cog):
             print(f"Failed to connect Lavalink: {e}")
 
     async def ensure_voice(self, ctx: commands.Context | discord.Interaction, *, connect: bool = True) -> Optional[Player]:
-        guild = ctx.guild if isinstance(ctx, commands.Context) else ctx.guild
+        guild = ctx.guild
         assert guild is not None
-
         player: Optional[Player] = self.get_player(guild)
-        if player is None:
-            if connect:
+        if player is None and connect:
+            author = ctx.author if isinstance(ctx, commands.Context) else ctx.user  # type: ignore
+            if not isinstance(author, discord.Member) or not author.voice or not author.voice.channel:
+                embed = make_embed(description="You are not in a voice channel.")
                 if isinstance(ctx, commands.Context):
-                    author = ctx.author
+                    await ctx.reply(embed=embed)
                 else:
-                    author = ctx.user  # type: ignore
-                if not isinstance(author, (discord.Member,)) or not author.voice or not author.voice.channel:
-                    embed = make_embed(description="You are not connected to a voice channel.")
-                    if isinstance(ctx, commands.Context):
-                        await ctx.reply(embed=embed)
-                    else:
-                        await ctx.response.send_message(embed=embed, ephemeral=True)
-                    return None
-                channel = author.voice.channel
-                player = await channel.connect(cls=Player)  # type: ignore[arg-type]
-            else:
+                    await ctx.response.send_message(embed=embed, ephemeral=True)
                 return None
+            channel = author.voice.channel
+            player = await channel.connect(cls=Player)  # type: ignore[arg-type]
         return player
 
     async def search_track(self, query: str) -> Optional[wavelink.Playable]:
-        if query.startswith("http://") or query.startswith("https://"):
-            return await wavelink.Playable.search(query).first()
-        return await wavelink.Playable.search(f"ytsearch:{query}").first()
+        try:
+            if query.startswith("http://") or query.startswith("https://"):
+                return await wavelink.Playable.search(query).first()
+            return await wavelink.Playable.search(f"ytsearch:{query}").first()
+        except Exception as e:
+            print(f"Track search failed: {e}")
+            return None
 
     async def start_playback(self, ctx: commands.Context | discord.Interaction, track: wavelink.Playable, *, user: discord.abc.User) -> None:
         assert ctx.guild
         player = await self.ensure_voice(ctx)
         if not player:
             return
-
         if not player.is_playing():
             await player.play(track)
         else:
             await player.queue.put(track)  # type: ignore[arg-type]
-
         e = make_embed(title="Queued", description=f"[{track.title}]({track.uri})", user=user)
         view = MusicView(self)
         if isinstance(ctx, commands.Context):
@@ -180,16 +165,12 @@ class Music(commands.Cog):
             else:
                 await ctx.response.send_message(embed=e, view=view)
 
-    # region events
     @commands.Cog.listener()
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload) -> None:
-        player: Optional[Player] = payload.player  # type: ignore[assignment]
+        player: Optional[Player] = payload.player  # type: ignore
         if player and player.guild and not player.is_playing():
             await player.do_next()
 
-    # endregion
-
-    # region commands
     @commands.hybrid_command(name="play", description="Play a song by name or URL")
     @app_commands.describe(query="Song name or YouTube URL")
     async def play(self, ctx: commands.Context, *, query: str) -> None:
@@ -203,45 +184,40 @@ class Music(commands.Cog):
     @commands.hybrid_command(name="pause", description="Pause the player")
     async def pause(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx, connect=False)
-        if not player:
-            return
-        await player.pause()
-        await ctx.reply(embed=make_embed(description="Paused ⏸️", user=ctx.author))
+        if player:
+            await player.pause()
+            await ctx.reply(embed=make_embed(description="Paused ⏸️", user=ctx.author))
 
     @commands.hybrid_command(name="resume", description="Resume the player")
     async def resume(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx, connect=False)
-        if not player:
-            return
-        await player.resume()
-        await ctx.reply(embed=make_embed(description="Resumed ▶️", user=ctx.author))
+        if player:
+            await player.resume()
+            await ctx.reply(embed=make_embed(description="Resumed ▶️", user=ctx.author))
 
     @commands.hybrid_command(name="stop", description="Stop and clear the queue")
     async def stop(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx, connect=False)
-        if not player:
-            return
-        player.queue = asyncio.Queue()
-        await player.stop()
-        await ctx.reply(embed=make_embed(description="Stopped ⏹️", user=ctx.author))
+        if player:
+            player.queue = asyncio.Queue()
+            await player.stop()
+            await ctx.reply(embed=make_embed(description="Stopped ⏹️", user=ctx.author))
 
     @commands.hybrid_command(name="skip", description="Skip the current track")
     async def skip(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx, connect=False)
-        if not player:
-            return
-        await player.stop()
-        await ctx.reply(embed=make_embed(description="Skipped ⏭️", user=ctx.author))
+        if player:
+            await player.stop()
+            await ctx.reply(embed=make_embed(description="Skipped ⏭️", user=ctx.author))
 
     @commands.hybrid_command(name="volume", description="Set the player volume (1-100)")
     @app_commands.describe(value="Volume from 1 to 100")
     async def volume(self, ctx: commands.Context, value: int) -> None:
         player = await self.ensure_voice(ctx, connect=False)
-        if not player:
-            return
-        value = max(1, min(100, value))
-        await player.set_volume(value)
-        await ctx.reply(embed=make_embed(description=f"Volume set to {value}% 🔊", user=ctx.author))
+        if player:
+            value = max(1, min(100, value))
+            await player.set_volume(value)
+            await ctx.reply(embed=make_embed(description=f"Volume set to {value}% 🔊", user=ctx.author))
 
     @commands.hybrid_command(name="queue", description="Show the current queue")
     async def queue_cmd(self, ctx: commands.Context) -> None:
@@ -252,16 +228,13 @@ class Music(commands.Cog):
         if player.current:
             items.append(f"Now: [{player.current.title}]({player.current.uri})")
         if not player.queue.empty():
-            q = list(player.queue._queue)  # type: ignore[attr-defined]
+            q = list(player.queue._queue)  # type: ignore
             for i, t in enumerate(q[:10], start=1):
                 items.append(f"{i}. [{t.title}]({t.uri})")
         if not items:
             items = ["Queue is empty."]
         await ctx.reply(embed=make_embed(title="Queue", description="\n".join(items), user=ctx.author))
 
-    # endregion
 
-
-async def setup(bot: commands.Bot) -> None:  # noqa: D401
-    """Load the Music cog."""
+async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Music(bot))
