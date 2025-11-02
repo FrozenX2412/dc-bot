@@ -6,10 +6,13 @@ from discord import app_commands
 from discord.ext import commands
 import wavelink
 
-GUILD_LOGO = 0x2b7fff
+# === Lavalink Connection ===
 LAVALINK_URI = "lava-v4.ajieblogs.eu.org:443"
-LAVALINK_PASSWORD = "your-lavalink-password"  # replace with actual password
+LAVALINK_PASSWORD = "ajieblogs"  # ⬅️ Replace with the REAL password from their Discord
 LAVALINK_SSL = True
+
+# === Embed Color ===
+GUILD_LOGO = 0x2b7fff
 
 
 def make_embed(
@@ -95,7 +98,7 @@ class Music(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._node_ready = asyncio.Event()
-        wavelink.Player = Player  # type: ignore
+        wavelink.Player = Player  # use our subclass
         bot.loop.create_task(self._connect_nodes())
 
     def get_player(self, guild: discord.Guild) -> Optional[Player]:
@@ -117,8 +120,9 @@ class Music(commands.Cog):
                     https=LAVALINK_SSL,
                 )
             self._node_ready.set()
+            print(f"✅ Connected to Lavalink: {LAVALINK_URI}")
         except Exception as e:
-            print(f"Failed to connect Lavalink: {e}")
+            print(f"❌ Failed to connect Lavalink: {e}")
 
     async def ensure_voice(self, ctx: commands.Context | discord.Interaction, *, connect: bool = True) -> Optional[Player]:
         guild = ctx.guild
