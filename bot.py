@@ -1,76 +1,77 @@
 import discord
 from discord.ext import commands
 import os
-import asyncio
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
-# Bot configuration
-TOKEN = os.getenv('DISCORD_TOKEN')
-PREFIX = os.getenv('PREFIX', '!')  # Default prefix is '!'
+TOKEN = os.getenv("DISCORD_TOKEN")
+PREFIX = os.getenv("PREFIX", "!")
+OWNER_ID = int(os.getenv("OWNER_ID", 0))
 
-# Define intents
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.guilds = True
 
+
 class DiscordBot(commands.Bot):
-    """Custom Discord Bot class"""
-    
     def __init__(self):
         super().__init__(
             command_prefix=PREFIX,
             intents=intents,
-            help_command=None  # We'll create a custom help command
+            help_command=None
         )
-    
+
     async def setup_hook(self):
-        """
-        This is called when the bot is starting up.
-        Load all cogs here.
-        """
-        print("Loading cogs...")
-        
-        # List of cog files to load
-        cogs = [
-            'cogs.moderation.ban',
-            'cogs.moderation.unban',
-            'cogs.moderation.kick',
-            'cogs.moderation.mute',
-            'cogs.moderation.unmute',
-            'cogs.moderation.clear',
-            'cogs.moderation.warn',
-            'cogs.moderation.serverinfo',
-            'cogs.moderation.avatar',
-            'cogs.moderation.utility',
-            'cogs.moderation.role_management',
-            'cogs.moderation.channel_management',
-            'cogs.moderation.advanced_moderation'
-        ]
-        
-        # Load each cog
-        for cog in cogs:
-            try:
-                await self.load_extension(cog)
-                print(f"✓ Loaded {cog}")
-            except Exception as e:
-                print(f"✗ Failed to load {cog}: {e}")
+        print("🔍 Auto-loading all cogs...")
+
+        # Load all cogs automatically
+        for root, dirs, files in os.walk("./cogs"):
+            for file in files:
+                if file.endswith(".py") and file != "__init__.py":
+                    ext = os.path.join(root, file).replace("/", ".").replace("\\", ".").replace(".py", "")
+
+                    try:
+                        await self.load_extension(ext)
+                        print(f"✅ Loaded: {ext}")
+                    except Exception as e:
+                        print(f"❌ Failed to load {ext}: {e}")
+
+        # Sync slash commands
+        try:
+            await self.tree.sync()
+            print("✅ Slash commands synced!")
+        except Exception as e:
+            print(f"❌ Slash command sync error: {e}")
 
     async def on_ready(self):
-        """Called when the bot is ready"""
-        print(f'Bot is ready! Logged in as {self.user.name}')
-        print(f'Bot ID: {self.user.id}')
-        print('------')
+        print(f"✅ Bot is online as {self.user} (ID: {self.user.id})")
+        print("------")
 
-# Create bot instance
+    async def on_command_error(self, ctx, error):
+        """Better error messages"""
+
+        if isinstance(error, commands.MissingPermissions):
+            missing = ", ".join(error.missing_permissions)
+            await ctx.send(f"❌ Missing permissions: `{missing}`")
+            return
+
+        if isinstance(error, commands.NotOwner):
+            await ctx.send("❌ Only the bot owner can do that.")
+            return
+
+        if isinstance(error, commands.CommandNotFound):
+            return  # ignore
+
+        await ctx.send(f"⚠️ Error: `{error}`")
+
+
 bot = DiscordBot()
 
-# Run the bot
 if __name__ == "__main__":
     if TOKEN is None:
-        print("Error: DISCORD_TOKEN not found in .env file")
+        print("❌ ERROR: DISCORD_TOKEN missing in .env")
     else:
         bot.run(TOKEN)
