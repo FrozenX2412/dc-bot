@@ -27,11 +27,15 @@ class DiscordBot(commands.Bot):
     async def setup_hook(self):
         print("🔍 Auto-loading all cogs...")
 
-        # Load all cogs automatically
+        # ✅ Load all cogs automatically, FIXED PATH
         for root, dirs, files in os.walk("./cogs"):
             for file in files:
                 if file.endswith(".py") and file != "__init__.py":
-                    ext = os.path.join(root, file).replace("/", ".").replace("\\", ".").replace(".py", "")
+
+                    # Build correct extension path
+                    path = os.path.join(root, file).replace("\\", "/")
+                    path = path.replace("./", "")            # remove leading ./
+                    ext = path.replace("/", ".").replace(".py", "")
 
                     try:
                         await self.load_extension(ext)
@@ -39,7 +43,7 @@ class DiscordBot(commands.Bot):
                     except Exception as e:
                         print(f"❌ Failed to load {ext}: {e}")
 
-        # Sync slash commands
+        # ✅ Sync slash commands
         try:
             await self.tree.sync()
             print("✅ Slash commands synced!")
@@ -63,7 +67,7 @@ class DiscordBot(commands.Bot):
             return
 
         if isinstance(error, commands.CommandNotFound):
-            return  # ignore
+            return  # ignore silently
 
         await ctx.send(f"⚠️ Error: `{error}`")
 
