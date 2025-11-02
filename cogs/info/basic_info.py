@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from discord import app_commands
 import datetime
 import time
 
@@ -40,7 +39,7 @@ class BasicInfo(commands.Cog):
         # Info Commands
         info_commands = (
             "`help` `ping` `uptime` `stats` `userinfo` `membercount` `roles` "
-            "`channelinfo` `emoji` `emotes` `id` `whois` `servericon` "
+            "`channelinfo` `emoji` `emotes` `id` `servericon` "
             "`boostcount` `joined` `servercreated` `invite`"
         )
         embed.add_field(
@@ -51,7 +50,7 @@ class BasicInfo(commands.Cog):
         
         embed.add_field(
             name="💡 Tip",
-            value="Use both slash commands (`/command`) or prefix commands (`!command`).",
+            value="You can use both slash (`/command`) and prefix (`!command`) forms.",
             inline=False
         )
         
@@ -62,14 +61,14 @@ class BasicInfo(commands.Cog):
     
     @commands.hybrid_command(
         name="ping",
-        description="Checks bot response time"
+        description="Check the bot's latency"
     )
     async def ping(self, ctx):
         """Check bot latency with creative embed styling"""
         
         latency = round(self.bot.latency * 1000)
         
-        # Determine color based on latency
+        # Color and status based on latency
         if latency < 100:
             color = discord.Color.green()
             status = "✅ Excellent"
@@ -77,7 +76,7 @@ class BasicInfo(commands.Cog):
             color = discord.Color.from_rgb(255, 193, 7)
             status = "⚠️ Good"
         else:
-            color = discord.Color.from_rgb(220, 53, 69)
+            color = discord.Color.red()
             status = "❌ Poor"
         
         embed = discord.Embed(
@@ -85,7 +84,6 @@ class BasicInfo(commands.Cog):
             color=color,
             timestamp=datetime.datetime.now()
         )
-        
         embed.add_field(name="📊 Latency", value=f"`{latency}ms`", inline=True)
         embed.add_field(name="📡 Status", value=status, inline=True)
         embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.display_avatar.url)
@@ -118,16 +116,15 @@ class BasicInfo(commands.Cog):
             color=discord.Color.from_rgb(40, 167, 69),
             timestamp=datetime.datetime.now()
         )
-        
         embed.add_field(name="🔄 Online For", value=f"`{uptime_str}`", inline=True)
-        embed.add_field(name="🔋 Started", value=f"<t:{int(self.start_time)}:R>", inline=True)
+        embed.add_field(name="🕓 Started", value=f"<t:{int(self.start_time)}:R>", inline=True)
         embed.set_footer(text=f"Requested by {ctx.author}", icon_url=ctx.author.display_avatar.url)
         
         await ctx.send(embed=embed)
     
     @commands.hybrid_command(
         name="stats",
-        description="Bot statistics info"
+        description="Displays bot statistics"
     )
     async def stats(self, ctx):
         """Display bot statistics with creative embed styling"""
@@ -140,10 +137,9 @@ class BasicInfo(commands.Cog):
             color=discord.Color.from_rgb(99, 102, 241),
             timestamp=datetime.datetime.now()
         )
-        
         embed.add_field(name="🏛️ Servers", value=f"`{guild_count}`", inline=True)
         embed.add_field(name="👥 Users", value=f"`{user_count}`", inline=True)
-        embed.add_field(name="📊 Latency", value=f"`{round(self.bot.latency * 1000)}ms`", inline=True)
+        embed.add_field(name="📡 Latency", value=f"`{round(self.bot.latency * 1000)}ms`", inline=True)
         
         uptime_seconds = int(time.time() - self.start_time)
         days = uptime_seconds // 86400
