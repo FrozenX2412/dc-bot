@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 import datetime
-from typing import Optional, Union
+from typing import Optional
 
 class Utility(commands.Cog):
     """Utility functions and helper commands"""
@@ -11,36 +11,12 @@ class Utility(commands.Cog):
     
     @staticmethod
     def format_datetime(dt: datetime.datetime) -> str:
-        """
-        Format a datetime object into a readable string
-        
-        Parameters:
-        -----------
-        dt: datetime.datetime
-            The datetime to format
-        
-        Returns:
-        --------
-        str: Formatted datetime string
-        """
+        """Format a datetime object into a readable string"""
         return dt.strftime("%B %d, %Y at %I:%M %p UTC")
     
     @staticmethod
     def create_error_embed(title: str, description: str) -> discord.Embed:
-        """
-        Create a standardized error embed
-        
-        Parameters:
-        -----------
-        title: str
-            The title of the error
-        description: str
-            The description of the error
-        
-        Returns:
-        --------
-        discord.Embed: The error embed
-        """
+        """Create a standardized error embed"""
         embed = discord.Embed(
             title=f"❌ {title}",
             description=description,
@@ -51,20 +27,7 @@ class Utility(commands.Cog):
     
     @staticmethod
     def create_success_embed(title: str, description: str) -> discord.Embed:
-        """
-        Create a standardized success embed
-        
-        Parameters:
-        -----------
-        title: str
-            The title of the success message
-        description: str
-            The description of the success
-        
-        Returns:
-        --------
-        discord.Embed: The success embed
-        """
+        """Create a standardized success embed"""
         embed = discord.Embed(
             title=f"✅ {title}",
             description=description,
@@ -75,20 +38,7 @@ class Utility(commands.Cog):
     
     @staticmethod
     def create_info_embed(title: str, description: str) -> discord.Embed:
-        """
-        Create a standardized info embed
-        
-        Parameters:
-        -----------
-        title: str
-            The title of the info message
-        description: str
-            The description of the info
-        
-        Returns:
-        --------
-        discord.Embed: The info embed
-        """
+        """Create a standardized info embed"""
         embed = discord.Embed(
             title=f"ℹ️ {title}",
             description=description,
@@ -99,62 +49,31 @@ class Utility(commands.Cog):
     
     @staticmethod
     def check_hierarchy(executor: discord.Member, target: discord.Member, guild: discord.Guild) -> tuple[bool, Optional[str]]:
-        """
-        Check if an executor can perform an action on a target member
-        
-        Parameters:
-        -----------
-        executor: discord.Member
-            The member trying to perform the action
-        target: discord.Member
-            The member being targeted
-        guild: discord.Guild
-            The guild where the action is taking place
-        
-        Returns:
-        --------
-        tuple[bool, Optional[str]]: (Can perform action, Error message if any)
-        """
-        # Check if target is the guild owner
+        """Check if an executor can perform an action on a target member"""
         if target == guild.owner:
             return False, "You cannot perform actions on the server owner."
-        
-        # Check if executor is the owner (owners can do anything)
         if executor == guild.owner:
             return True, None
-        
-        # Check role hierarchy
         if target.top_role >= executor.top_role:
             return False, "You cannot perform actions on this member as their role is higher than or equal to yours."
-        
         return True, None
     
     @staticmethod
     def check_bot_hierarchy(bot_member: discord.Member, target: discord.Member) -> tuple[bool, Optional[str]]:
-        """
-        Check if the bot can perform an action on a target member
-        
-        Parameters:
-        -----------
-        bot_member: discord.Member
-            The bot's member object
-        target: discord.Member
-            The member being targeted
-        
-        Returns:
-        --------
-        tuple[bool, Optional[str]]: (Can perform action, Error message if any)
-        """
+        """Check if the bot can perform an action on a target member"""
         if target.top_role >= bot_member.top_role:
             return False, "I cannot perform actions on this member as their role is higher than or equal to mine."
-        
         return True, None
     
     @commands.hybrid_command(
         name="ping",
         description="Check the bot's latency"
     )
-    
+    async def ping(self, ctx: commands.Context):
+        """Check the bot's latency"""
+        latency = round(self.bot.latency * 1000)
+        embed = self.create_info_embed("Pong!", f"🏓 Latency: **{latency}ms**")
+        await ctx.reply(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Utility(bot))
