@@ -8,7 +8,7 @@ import wavelink
 
 # === Lavalink Connection ===
 LAVALINK_URI = "lava-v4.ajieblogs.eu.org:443"
-LAVALINK_PASSWORD = "ajieblogs"  # ⬅️ Replace with the REAL password from their Discord
+LAVALINK_PASSWORD = "https://dsc.gg/ajidevserver"
 LAVALINK_SSL = True
 
 # === Embed Color ===
