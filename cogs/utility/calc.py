@@ -1,111 +1,167 @@
-import discord
-from discord.ext import commands
-from discord import app_commands
-import re
+# cogs/util/calc.py
 import ast
 import operator
+from typing import Union
+
+import discord
+from discord.ext import commands
+
+ALLOWED_BINOPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+}
+
+ALLOWED_UNARYOPS = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
+
+# Safety limits
+MAX_EXPONENT = 10          # disallow x ** y where y > MAX_EXPONENT (absolute)
+MAX_RESULT = 1e12          # disallow extremely large results
+MAX_NODES = 200            # avoid very deep/large ASTs
+
+
+class SafeCalcError(Exception):
+    pass
+
 
 class Calculator(commands.Cog):
-    """Simple calculator command with safety checks"""
-    
-    def __init__(self, bot):
+    """Safe calculator with hybrid command (prefix + slash)."""
+
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
-        # Safe operators for calculation
-        self.operators = {
-            ast.Add: operator.add,
-            ast.Sub: operator.sub,
-            ast.Mult: operator.mul,
-            ast.Div: operator.truediv,
-            ast.Pow: operator.pow,
-            ast.Mod: operator.mod,
-            ast.UAdd: operator.pos,
-            ast.USub: operator.neg
-        }
-    
-    @commands.command(name='calc', aliases=['calculate', 'math'])
-    async def calc_prefix(self, ctx, *, expression: str):
-        """Calculate a mathematical expression (prefix command)"""
-        await self._calculate(ctx, expression)
-    
-    @app_commands.command(name='calc', description='Calculate a mathematical expression')
-    async def calc_slash(self, interaction: discord.Interaction, expression: str):
-        """Calculate a mathematical expression (slash command)"""
-        await self._calculate(interaction, expression)
-    
-    async def _calculate(self, ctx_or_interaction, expression: str):
-        """Internal method to perform safe calculation"""
-        is_interaction = isinstance(ctx_or_interaction, discord.Interaction)
-        
+
+    @commands.hybrid_command(name="calc", description="Evaluate a safe math expression")
+    async def calc(self, ctx: Union[commands.Context, discord.Interaction], *, expression: str):
+        """
+        Example: /calc expression: "2 + 3*(4-1)"
+        Works as both a prefix and a slash command.
+        """
+        is_interaction = isinstance(ctx, discord.Interaction)
+        # If hybrid invoked as an Interaction, discord.py usually passes a Context, but handle both.
         try:
-            # Remove any whitespace
             expression = expression.strip()
-            
-            # Perform safe evaluation
-            result = self._eval_expr(expression)
-            
-            # Create embed
-            embed = discord.Embed(
-                title="🧮 Calculator",
-                color=discord.Color.green()
-            )
-            
+            if not expression:
+                raise SafeCalcError("Empty expression.")
+
+            # Parse to AST
+            try:
+                node = ast.parse(expression, mode="eval")
+            except SyntaxError as se:
+                raise SafeCalcError("Syntax error in expression.") from se
+
+            # Basic node count limit
+            all_nodes = list(ast.walk(node))
+            if len(all_nodes) > MAX_NODES:
+                raise SafeCalcError("Expression too complex.")
+
+            result = self._eval_node(node.body)
+
+            # Enforce result magnitude limit
+            if isinstance(result, (int, float)) and abs(result) > MAX_RESULT:
+                raise SafeCalcError("Result too large to display.")
+
+            # Build and send embed
+            embed = discord.Embed(title="🧮 Calculator", color=discord.Color.green())
             embed.add_field(name="Expression", value=f"```{expression}```", inline=False)
             embed.add_field(name="Result", value=f"```{result}```", inline=False)
-            embed.set_footer(text=f"Requested by {ctx_or_interaction.user.display_name if is_interaction else ctx_or_interaction.author.display_name}")
-            
+            requester = ctx.user.display_name if is_interaction else ctx.author.display_name
+            embed.set_footer(text=f"Requested by {requester}")
+
             if is_interaction:
-                await ctx_or_interaction.response.send_message(embed=embed)
+                if not ctx.response.is_done():
+                    await ctx.response.send_message(embed=embed)
+                else:
+                    await ctx.followup.send(embed=embed)
             else:
-                await ctx_or_interaction.send(embed=embed)
-                
-        except (ValueError, SyntaxError, KeyError) as e:
-            error_embed = discord.Embed(
-                title="Calculation Error",
-                description=f"Invalid expression: {str(e)}",
-                color=discord.Color.red()
-            )
-            error_embed.add_field(
-                name="Expression",
-                value=f"```{expression}```",
-                inline=False
-            )
-            error_embed.set_footer(text="Please use basic mathematical operators: +, -, *, /, **, %, ( )")
-            
+                await ctx.send(embed=embed)
+
+        except SafeCalcError as e:
+            err_embed = discord.Embed(title="Calculation error", description=str(e), color=discord.Color.red())
+            err_embed.add_field(name="Allowed operators", value="`+  -  *  /  //  %  **` and parentheses", inline=False)
+            err_embed.set_footer(text="Examples: 2+2, (3+4)*5, 2**3")
             if is_interaction:
-                await ctx_or_interaction.response.send_message(embed=error_embed, ephemeral=True)
+                try:
+                    if not ctx.response.is_done():
+                        await ctx.response.send_message(embed=err_embed, ephemeral=True)
+                    else:
+                        await ctx.followup.send(embed=err_embed, ephemeral=True)
+                except Exception:
+                    if ctx.channel:
+                        await ctx.channel.send(embed=err_embed)
             else:
-                await ctx_or_interaction.send(embed=error_embed)
-        
-        except Exception as e:
-            error_embed = discord.Embed(
-                title="Error",
-                description=f"Failed to calculate: {str(e)}",
-                color=discord.Color.red()
-            )
+                await ctx.send(embed=err_embed)
+        except Exception as exc:
+            # Unexpected error — don't leak internals to users
+            err_embed = discord.Embed(title="Error", description="An internal error occurred.", color=discord.Color.red())
             if is_interaction:
-                await ctx_or_interaction.response.send_message(embed=error_embed, ephemeral=True)
+                try:
+                    if not ctx.response.is_done():
+                        await ctx.response.send_message(embed=err_embed, ephemeral=True)
+                    else:
+                        await ctx.followup.send(embed=err_embed, ephemeral=True)
+                except Exception:
+                    if ctx.channel:
+                        await ctx.channel.send(embed=err_embed)
             else:
-                await ctx_or_interaction.send(embed=error_embed)
-    
-    def _eval_expr(self, expr):
-        """Safely evaluate mathematical expression"""
-        # Parse the expression
-        node = ast.parse(expr, mode='eval')
-        return self._eval_node(node.body)
-    
+                await ctx.send(embed=err_embed)
+
     def _eval_node(self, node):
-        """Recursively evaluate AST nodes"""
-        if isinstance(node, ast.Constant):  # Number
-            return node.value
-        elif isinstance(node, ast.BinOp):  # Binary operation
+        """Recursively evaluate a whitelisted AST node."""
+        # Numbers (Constant for py3.8+)
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, (int, float)):
+                return node.value
+            raise SafeCalcError("Only numeric constants are allowed.")
+
+        # Support legacy Num node (just in case)
+        if isinstance(node, ast.Num):
+            return node.n
+
+        # Parenthesis/grouping are represented by the sub-node already (no separate node)
+
+        # Unary ops
+        if isinstance(node, ast.UnaryOp):
+            op_type = type(node.op)
+            if op_type not in ALLOWED_UNARYOPS:
+                raise SafeCalcError("Unsupported unary operator.")
+            val = self._eval_node(node.operand)
+            return ALLOWED_UNARYOPS[op_type](val)
+
+        # Binary ops
+        if isinstance(node, ast.BinOp):
+            op_type = type(node.op)
+            if op_type not in ALLOWED_BINOPS:
+                raise SafeCalcError("Unsupported binary operator.")
             left = self._eval_node(node.left)
             right = self._eval_node(node.right)
-            return self.operators[type(node.op)](left, right)
-        elif isinstance(node, ast.UnaryOp):  # Unary operation
-            operand = self._eval_node(node.operand)
-            return self.operators[type(node.op)](operand)
-        else:
-            raise ValueError("Unsupported operation")
 
-async def setup(bot):
+            # Exponent safety: limit exponent magnitude
+            if op_type is ast.Pow:
+                try:
+                    if abs(right) > MAX_EXPONENT:
+                        raise SafeCalcError(f"Exponent too large (max {MAX_EXPONENT}).")
+                except TypeError:
+                    raise SafeCalcError("Invalid exponent.")
+
+            try:
+                return ALLOWED_BINOPS[op_type](left, right)
+            except ZeroDivisionError:
+                raise SafeCalcError("Division by zero.")
+            except Exception:
+                raise SafeCalcError("Error evaluating expression.")
+
+        # Parenthesized expression or nested expression handled by AST structure
+
+        # Reject any other node types explicitly (Name, Call, Attribute, Subscript, etc.)
+        raise SafeCalcError("Unsupported expression element detected (only numbers and basic operators allowed).")
+
+
+async def setup(bot: commands.Bot):
     await bot.add_cog(Calculator(bot))
